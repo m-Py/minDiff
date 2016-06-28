@@ -36,8 +36,6 @@ equal <- createGroups(survey, criteria_scale=c("Age"),
 
 ````
 
-When the function is executed, we receive a warning: missing values were found in the column "Age" of the survey data set. The function still tries to equalize the age of students between groups.
-
 The returned data.frame `equal` is be a shuffled version of the data.frame `survey`, which has one additional column: newSet -- this is the group assignment variable that we were looking for.
 
 Let's have a look at this:
@@ -64,10 +62,8 @@ We can do even more assignments to create groups that are even more equal. Note 
 
 
 ```S
-
 equal <- createGroups(equal, criteria_scale=c("Age"), 
                       sets_n = 3, repetitions=100, equalize=list(mean))
-
 ````
 
 ```S
@@ -95,12 +91,12 @@ We can see that gender ratios are very different between dormitories. `createGro
 ```S
 
 equal <- createGroups(survey, criteria_scale=c("Age"), 
-                      criteria_nominal=c("Sex"), tolerance_nominal=c(1),
+                      criteria_nominal=c("Sex"), tolerance_nominal=c(2),
                       sets_n = 3, repetitions=100, equalize=list(mean))
 
 ````
 
-By specifying the parameter `tolerance_nominal` = 2, we tell the function that we tolerate deviations in the frequency between new sets of no more than 2. Did that work?
+By specifying the parameter `tolerance_nominal = 2`, we tell the function that we tolerate deviations in the frequency between new sets of no more than 2. Did that work?
 
 ```S
 > table(equal$newSet, equal$Sex)
@@ -109,12 +105,11 @@ By specifying the parameter `tolerance_nominal` = 2, we tell the function that w
   1     40   39
   2     38   40
   3     40   39
-
 ```
 
 Note that in this case, we could decrease our tolerance for deviations to 1, but it is impossible to assign the same number of female and male students to all dormitories in this case. If a tolerance of 0 is passed, the function will never stop executing, so be careful with low tolerance values if you are not sure how categories can be assigned to groups.
 
-### Further possibilities
+### Use more than one categorical and / or scale variable:
 
 Use more than one categorical and / or scale variables:
 
@@ -122,22 +117,50 @@ Use more than one categorical and / or scale variables:
 
 equal <- createGroups(survey, criteria_scale=c("Age", "Height"), 
                       criteria_nominal=c("Sex", "Smoke"), 
-                      tolerance_nominal=c(1, 4, Inf),
+                      tolerance_nominal=c(2, 4, Inf),
                       sets_n = 3, repetitions=100, equalize=list(mean))
 
+> table(equal$newSet, equal$Sex)
+
+    Female Male
+  1     39   40
+  2     40   38
+  3     39   40
+
+
+> table(equal$newSet, equal$Smoke)
+
+    Heavy Never Occas Regul
+  1     1    65     7     6
+  2     5    63     5     5
+  3     5    61     7     6
+
+                      
 ````
 
-Consider more than only the mean in each group: 
+Beware that the parameter `tolerance_nominal` expects a vector of length 3 if two categorical variables are to be considered. These values indicate tolerances from deviations for the first, the second and the combined categorical levels! It is wise not to use low tolerance levels for the combined levels because the function can run very long in that case. In the present case I was not interested to assign an equal number of smoking females and males to each dormitories, so the combined tolerance is set to infinity.
+
+### Use other equalizing functions
+
+More functions can be considered that specify how groups should assigned, for eample I could be interested not only in equalizing mean age between groups, but also the standard deviation of ages:
 
 ```S
-
-equal <- createGroups(survey, criteria_scale=c("Age", "Height"), 
+equal <- createGroups(survey, criteria_scale=c("Age"), 
                       criteria_nominal=c("Smoke"), 
                       tolerance_nominal=c(2),
-                      sets_n = 3, repetitions=100, equalize=list(mean, sd))
+                      sets_n = 3, repetitions=500, equalize=list(mean, sd))
+                      
+> tapply(equal$Age, equal$newSet, mean)
+       1        2        3 
+20.35976 20.38613 20.37766 
 
+>  tapply(equal$Age, equal$newSet, sd)
+       1        2        3 
+6.394374 6.084377 6.992444 
 ````
+
+Beware that simple assigments are fast and not many repetitions are needed. However if you want to use several criteria, more repetitions might be needed and the result for each single criterion might be worse.
 
 ## Feedback / Bug reports
 
-Any feedback or reports on bugs is **greatly** appreciated; just open an issue on Github!
+Any feedback or reports on bugs is **greatly** appreciated; just open an issue!
