@@ -15,7 +15,7 @@
 #'     A maximum of two nominal criteria can be realized.
 #' @param sets_n How many equal groups are to be created.
 #' @param repetitions How many reassignment trials are to be made.
-#' @param tolerance_nominal Use only if argument `criteri_nominal` is also passed. This argument indicates the tolerated frequency deviations for nominal variables
+#' @param tolerance_nominal Use only if argument `criteria_nominal` is also passed. This argument indicates the tolerated frequency deviations for nominal variables
 #'     (and their combinations) between newly created sets. Must be a one-value
 #'     vector if one nominal variable is passed; must be a three-value vector if two
 #'     nominal variables are passed (the second value is the tolerance value for the
@@ -52,12 +52,6 @@ createGroups <- function(data, criteria_scale=NULL, criteria_nominal=NULL,
       stop(paste(errMsg, "first argument must be a data.frame"))
    }
 
-   if (is.null(criteria_scale) && is.null(criteria_nominal)) {
-      warning("warning: no assignment criterion was passed.
-              Given data.frame is returned in random order.")
-      return(data[with(data, order(sample(cases))), ])
-   }
-   
    if (length(criteria_nominal) > 2) {
       stop(paste(errMsg, "only two nominal variables can be considered in set creation."))
    }
@@ -71,16 +65,31 @@ createGroups <- function(data, criteria_scale=NULL, criteria_nominal=NULL,
       if( is.na( match(i, names(data)) ))  {
          stop(paste(errMsg, "`", i, "` is not a column in the passed data.frame", sep=""))
       }
+   }   
+
+   # Warnings
+   # no criterion was passed - just shuffle the data.frame
+   if (is.null(criteria_scale) && is.null(criteria_nominal)) {
+      warning("warning: no assignment criterion was passed.
+              Given data.frame is returned in random order.")
+      return(data[with(data, order(sample(cases))), ])
    }
-    
+   # set number does not divide total number of cases, proceed but let user know
    if (cases %% sets_n != 0) {
-       stop(paste(errMsg, " set number (", sets_n, ") does not divide length of data (",
-                  cases, "). New sets cannot be created.", sep=""))
+       warning(paste(" set number (", sets_n, ") does not divide length of data (",
+                  cases, "). New sets will have unequal sizes.", sep=""))
    }
-  
+   # check for NA values in criterion columns
+   test.frame <- data.frame(data[criteria_scale], data[criteria_nominal])
+   no.na      <- sum(apply(test.frame, 2, function(x) any(is.na(x)))) == 0
+   print(no.na)
+   if (no.na) {
+      warning("Warning: NA values were found in assigment criteria")
+   }
+   
    # START RANDOMLY ASSIGNING CASES TO SETS
    cat("Start simulation ","-", format(Sys.time(), "%a %b %d %X %Y"), "\n")
-   setAssign <- rep(1:sets_n, cases/sets_n)
+   setAssign <- rep_len(1:sets_n, nrow(data))
 
    # Generate new item sets randomly, select those sets for which differences in
    # regards to the specified criteria are minimized
@@ -95,11 +104,13 @@ createGroups <- function(data, criteria_scale=NULL, criteria_nominal=NULL,
           }
       cat("Variable newSet was found - trying to improve previous optimization \n")
       best_var <- checkVar(data, criteria_scale, equalize)
-      bestSet  <- data
+      newSet  <- data
    }
    else {
       best_var <- Inf # start value of variance between new sets
    }
+   
+   # no newSet was passed, start anew completely
    for (i in 1:repetitions) {
       partials <- ceiling(repetitions / 10)
       if (i %% partials == 0) { cat("working on iteration", i, "\n") }
@@ -151,7 +162,7 @@ createGroups <- function(data, criteria_scale=NULL, criteria_nominal=NULL,
 
       if (!is.null(criteria_scale)) {
 
-         # NOW CONTINUOUS VARIABLES ARE CHECKED! What is done: Minimize variance between
+#          # NOW CONTINUOUS VARIABLES ARE CHECKED! What is done: Minimize variance between
          # item sets in regard to the functions specified in argument `equalize`; `mean`
          # is the default function for which differences between sets are minimized
          sumVar <- checkVar(itemDataRnd, criteria_scale, equalize)
@@ -191,8 +202,8 @@ checkVar <- function(data, criteria_scale, equalize) {
       tmpVar_1Crit  <- NULL
       for (j in 1:length(equalize)) {
           tmpMeans    <- tapply(scale(data[criteria_scale[t]]),
-                                data$newSet, FUN=equalize[[j]])
-          tmpVar_1Crit <- c(tmpVar_1Crit, var(tmpMeans))
+                                data$newSet, FUN=equalize[[j]], na.rm =TRUE)
+          tmpVar_1Crit <- c(tmpVar_1Crit, var(tmpMeans, na.rm =TRUE))
       }
       varAllCrits     <- c(varAllCrits, tmpVar_1Crit)
    }
