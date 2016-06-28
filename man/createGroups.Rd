@@ -25,7 +25,7 @@ A maximum of two nominal criteria can be realized.}
 
 \item{repetitions}{How many reassignment trials are to be made.}
 
-\item{tolerance_nominal}{Use only if argument `criteri_nominal` is also passed. This argument indicates the tolerated frequency deviations for nominal variables
+\item{tolerance_nominal}{Use only if argument `criteria_nominal` is also passed. This argument indicates the tolerated frequency deviations for nominal variables
 (and their combinations) between newly created sets. Must be a one-value
 vector if one nominal variable is passed; must be a three-value vector if two
 nominal variables are passed (the second value is the tolerance value for the
