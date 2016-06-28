@@ -82,7 +82,7 @@ createGroups <- function(data, criteria_scale=NULL, criteria_nominal=NULL,
    # check for NA values in criterion columns
    test.frame <- data.frame(data[criteria_scale], data[criteria_nominal])
    no.na      <- sum(apply(test.frame, 2, function(x) any(is.na(x)))) == 0
-   if (no.na) {
+   if (!no.na) {
       warning("Warning: NA values were found in assigment criteria")
    }
    
