@@ -1,8 +1,8 @@
 # minDiff
 
-minDiff is an R-package that can be used to assign elements to groups and minimize differences between the assigned groups, i.e. make elements in all groups as equal as possible. This functionality is implemented in the method `createGroups()`.
+minDiff is an R-package that can be used to assign elements to a specified number of groups and minimize differences between created groups. This functionality is implemented in the method `createGroups()`.
 
-I created this package to assign stimuli in psychological experiments to different conditions so that conditions are as equal as possible a priori. But I am sure that a wide range of applications is possible (for an example, see section 'Usage').
+I created this package to assign stimuli in psychological experiments to different conditions so that conditions are as equal as possible, a priori. But I am sure that a wide range of applications is possible (for an example, see section 'Usage').
 
 ## Installation
 
@@ -24,9 +24,8 @@ To reproduce the following example, install the "MASS" package that contains the
 
 ```S
 library("MASS")
-data(survey)
-# look at the data:
-head(survey, n=10)
+data(survey)       # load data set
+head(survey, n=10) # look at the data
 ``` 
 
 The `survey` data set contains some demographic information on a student sample. Imagine you wish to assign students to three different dormitories and want to create a similar groups of students in each house. As a first step, we might want to match average student age. 
@@ -40,7 +39,7 @@ equal <- createGroups(survey, criteria_scale=c("Age"),
 
 ````
 
-The returned data.frame `equal` is be a shuffled version of the data.frame `survey`, which has one additional column: newSet - this is the group assignment variable that we were looking for.
+By passing the column `survey$Age` to the argument `criteria_scale` we tell the function that age is a continuous variable that we want to compute the mean for in each of the newly created groups. The function returns a data.frame that is saved into the object `equal`. `equal` is a shuffled version of the original data set `survey`, which has one additional column: `newSet` - this is the group assignment variable that was created.
 
 Let's have a look at this:
 
@@ -50,9 +49,9 @@ Let's have a look at this:
 79 79 79 
 ```
 
-The `survey` data set has 237 entries, which can be fit equally into three group. In this case, we are lucky that all groups are of the same size. If the data set had not been a multiplier of the group number, `createGroups()` would have created groups that are of similar size.
+The `survey` data set has 237 entries, which can be assigned to three groups of equal size. If the data set had not been a multiplier of the group number, `createGroups()` would have created groups that are of similar size.
 
- Let's see how successful our attempt was to create equal groups:
+Let's see how successful our attempt was to create equal groups with regards to student age:
 
 ```S
 > tapply(equal$Age, equal$newSet, mean)
@@ -60,9 +59,9 @@ The `survey` data set has 237 entries, which can be fit equally into three group
 20.35449 20.57806 20.19099 
 ```
 
-Not so bad! But how did it work? In the function call above, we specified another parameter, `repetitions=10`. This means that the function randomly assigned all cases (i.e. students) to three groups ten times, and in the end the most equal group assignment was returned. What is considered most equal has been determined by the parameters `criteria_scale` and `equalize`. `criteria_scale="Age"` told the function that student age is to be considered. The parameter `equalize=list(mean)` told the function that differences in mean age are to be minimized between groups.
+Not so bad! But how did it work? In the function call above, we specified another parameter, `repetitions=10`. This means that the function randomly assigned all cases (i.e. students) to three groups ten times, and returned the most equal group assignment. What is considered most equal is determined by the parameters `criteria_scale` and `equalize`.
 
-By varying the parameter `repetitions` we can increase our chances of creating equal groups. Let's see what happens if we do only one repetition - in this case, the data set is shuffled only once and no optimization is conducted:
+By varying the parameter `repetitions` we can increase our chances of creating equal groups. Let's see what happens if we do only one trial - in this case, the data set is simply shuffled once and no optimization is conducted:
 
 ```S
 equal <- createGroups(survey, criteria_scale=c("Age"), 
@@ -73,7 +72,7 @@ equal <- createGroups(survey, criteria_scale=c("Age"),
 20.71423 19.54434 20.86497                
 ```
 
-If we make 10,000 repetitions (which is still very fast if we only consider one scale variable), the groups will be very equal with regards to age. Note that it is possible to pass a data set that has been optimized previously; in this case the program does not start all over, but only tries to get better than the previously best assignment:
+If we conduct 10,000 repetitions (which is still very fast if we only consider one variable), the groups will be very similar with regards to age. Note that it is possible to pass a data set that has been optimized previously; in this case, the program does not start all over, but only tries find more similar groups than the previous best assignment:
 
 ```S
 equal <- createGroups(equal, criteria_scale=c("Age"), 
@@ -81,10 +80,10 @@ equal <- createGroups(equal, criteria_scale=c("Age"),
                      
 > tapply(equal$Age, equal$newSet, mean)
        1        2        3 
-20.37028 20.38194 20.37133                     
+20.37028 20.38194 20.37133
 ```
 
-Nice! How minimal differences between sets can be depends on the original data, of course.
+Nice! How small differences between sets can become depends on the original data.
 
 ### Considering more than one criterion
 
@@ -103,11 +102,11 @@ equal <- createGroups(survey, criteria_scale=c("Age", "Height"),
 172.5658 172.3694 172.2292
 ```
 
-Note that there were missing values in the variable `survey$Height`. This is given out as a warning by `createGroups()`, but it will still return a result (and simply disregards the missing case).
+Note that there were missing values in the variable `survey$Height`. This is given out as a warning by `createGroups()`, but it will still return a result (and simply disregards the missing value in the variable height).
 
-### Considering categorical variables
+### Considering categorical criteria
 
-We may not only wish to minimize differences with regards to age or height, but we might want to create equal gender ratios in all dormitories. Let's check how well the assignment that only considered age did in that regard:
+We may not only wish to minimize differences with regards to age or height, but we might want to create equal gender ratios in all dormitories. Let's check in what ratios our previous group assignment resulted:
 
 ```S
 > table(equal$newSet, equal$Sex)
@@ -119,7 +118,7 @@ We may not only wish to minimize differences with regards to age or height, but 
 
 ```
 
-We can see that gender ratios are very different between dormitories. `createGroups()` offers the possibility to consider categorical variables in its assigment, they are passed via the `criteria_nominal` parameter. Let's try this out:
+We can see that gender ratios are very different between dormitories. `createGroups()` offers the possibility to consider categorical variables when creating  groups. These are passed via the `criteria_nominal` parameter. Let's try this out:
 
 ```S
 
@@ -142,7 +141,7 @@ By specifying the parameter `tolerance_nominal = 2`, we tell the function that w
 
 Note that in this case, we could decrease our tolerance for deviations to 1, but it is impossible to assign the same number of female and male students to all dormitories in this case. If a tolerance of 0 is passed, the function will never stop executing, so be careful with low tolerance values if you are not sure how categories can be assigned to groups.
 
-### Use more than one categorical variable:
+### Use more than one categorical variable
 
 It is possible to pass two categorical criteria `createGroups()`. There is no limit for scale criteria, but only two categorical variables can be passed (that is because two variables can already make the program run really slow).
 
