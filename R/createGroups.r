@@ -53,154 +53,162 @@
 #'
 
 create_groups <- function(data, criteria_scale=NULL, criteria_nominal=NULL,
-                         sets_n, repetitions=1, tolerance_nominal=rep(Inf, 3),
-                         equalize=list(mean), write_file = FALSE) {
+                          sets_n, repetitions=1, tolerance_nominal=rep(Inf, 3),
+                          equalize=list(mean), write_file = FALSE) {
 
-   # how many items are to be reassigned
-   cases <- nrow(data)
+                                        ## how many items are to be reassigned
+    cases <- nrow(data)
     
-   # CHECK FOR ERRORS IN USER INPUT
-   errMsg <- "error in function reassign.set:"
+
    
-   if (class(data) != "data.frame") {
-      stop(paste(errMsg, "first argument must be a data.frame"))
-   }
+    ## START RANDOMLY ASSIGNING CASES TO SETS
+    cat("Start simulation ","-", format(Sys.time(), "%a %b %d %X %Y"), "\n")
+    setAssign <- rep_len(1:sets_n, nrow(data))
+    
+    ## Generate new item sets randomly, select those sets for which differences in
+    ## regards to the specified criteria are minimized
 
-   if (length(criteria_nominal) > 2) {
-      stop(paste(errMsg, "only two nominal variables can be considered in set creation."))
-   }
-
-   if (length(criteria_nominal) == 2 && length(tolerance_nominal) < 3) {
-      stop(paste(errMsg, "Three tolerance_nominal values must be passed if
-                          two nominal criteria are given."))
-   }
-   
-   for (i in c(criteria_scale, criteria_nominal)) {
-      if( is.na( match(i, names(data)) ))  {
-         stop(paste(errMsg, "`", i, "` is not a column in the passed data.frame", sep=""))
-      }
-   }   
-
-   # Warnings
-   # no criterion was passed - just shuffle the data.frame
-   if (is.null(criteria_scale) && is.null(criteria_nominal)) {
-      warning("warning: no assignment criterion was passed.
-              Given data.frame is returned in random order.")
-      return(data[with(data, order(sample(cases))), ])
-   }
-   # set number does not divide total number of cases, proceed but let user know
-   if (cases %% sets_n != 0) {
-       warning(paste(" set number (", sets_n, ") does not divide length of data (",
-                  cases, "). New sets will have unequal sizes.", sep=""))
-   }
-   # check for NA values in criterion columns
-   test.frame <- data.frame(data[criteria_scale], data[criteria_nominal])
-   no.na      <- sum(apply(test.frame, 2, function(x) any(is.na(x)))) == 0
-   if (!no.na) {
-      warning("Warning: NA values were found in assigment criteria")
-   }
-   
-   # START RANDOMLY ASSIGNING CASES TO SETS
-   cat("Start simulation ","-", format(Sys.time(), "%a %b %d %X %Y"), "\n")
-   setAssign <- rep_len(1:sets_n, nrow(data))
-
-   # Generate new item sets randomly, select those sets for which differences in
-   # regards to the specified criteria are minimized
-
-   # case: a set was passed that allready was optizmized in a recent run
-   if (!is.null(data$newSet)) {
-      if (length(unique(data$newSet)) != sets_n) {
-          stop(paste(errMsg, "Variable newSet was found in data.frame
+    ## case: a set was passed that already was optizmized in a recent run
+    if (!is.null(data$newSet)) {
+        if (length(unique(data$newSet)) != sets_n) {
+            stop(paste(errMsg, "Variable newSet was found in data.frame
                that was passed. Number of different groups in variable
                newSet is not equal to the value that was passed via
                argument `sets_n`"))
-          }
-      cat("Variable newSet was found - trying to improve previous optimization \n")
-      best_var <- checkVar(data, criteria_scale, equalize)
-      newSet  <- data
-   }
-   else {
-      best_var <- Inf # start value of variance between new sets
-   }
+        }
+        cat("Variable newSet was found - trying to improve previous optimization \n")
+        best_var <- checkVar(data, criteria_scale, equalize)
+        newSet  <- data
+    } else {
+        best_var <- Inf # start value of variance between new sets
+    }
    
-   # no newSet was passed, start anew completely
-   for (i in 1:repetitions) {
-      partials <- ceiling(repetitions / 10)
-      if (i %% partials == 0) { cat("working on iteration", i, "\n") }
-      # here a random set is generated
-      itemDataRnd <- data[with(data, order(sample(cases))), ]
-      itemDataRnd$newSet <- setAssign
-
-      ### consider making nominal variable checking an external method!!
-      # Check if nominal variables are OK
-      # Nominal variable checking is done in the following WHILE loop
-      if (!is.null(criteria_nominal)) {
-         number_criteria_nominal <- length(criteria_nominal) 
-         nominal_satisfied <- FALSE
-         while (nominal_satisfied == FALSE) {
-            # how is first nominal variable in the new sets distributed
-            tmpNomData_1   <- unlist(itemDataRnd[criteria_nominal[1]])
-            tmpNomDistr_1  <- table(itemDataRnd$newSet, tmpNomData_1)
-            if (length(criteria_nominal) == 1) { # only one nominal variable was passed
-               devFromPerfect_1 <- max(check2d_table(tmpNomDistr_1))
-               assignFailed     <- devFromPerfect_1 > tolerance_nominal[1]
-            } else if (length(criteria_nominal) == 2) { # two nominal criteria
-               tmpNomData_2   <- unlist(itemDataRnd[criteria_nominal[2]])
-               tmpNomDistr_2  <- table(itemDataRnd$newSet, tmpNomData_2)
-               tmpNomDistr_intAct  <- table(itemDataRnd$newSet, tmpNomData_1, tmpNomData_2)
-               
-               devFromPerfect_1   <- max(check2d_table(tmpNomDistr_1))
-               devFromPerfect_2   <- max(check2d_table(tmpNomDistr_2))
-               devFromPerfect_int <- max(check3d_table(tmpNomDistr_intAct))
-               assignFailed       <- (devFromPerfect_1 > tolerance_nominal[1]) |
-                   (devFromPerfect_2 > tolerance_nominal[2]) |
-                   (devFromPerfect_int > tolerance_nominal[3])
+    ## start iterating
+    for (i in 1:repetitions) {
+        partials <- ceiling(repetitions / 10)
+        if (i %% partials == 0) { cat("working on iteration", i, "\n") }
+                                        # here a random set is generated
+        itemDataRnd <- data[with(data, order(sample(cases))), ]
+        itemDataRnd$newSet <- setAssign
+        
+        ## consider making nominal variable checking an external method!!
+        ## Check if nominal variables are OK
+        ## Nominal variable checking is done in the following WHILE loop
+        if (!is.null(criteria_nominal)) {
+            number_criteria_nominal <- length(criteria_nominal) 
+            nominal_satisfied <- FALSE
+            while (nominal_satisfied == FALSE) {
+                ## how is first nominal variable in the new sets distributed
+                tmpNomData_1   <- unlist(itemDataRnd[criteria_nominal[1]])
+                tmpNomDistr_1  <- table(itemDataRnd$newSet, tmpNomData_1)
+                if (length(criteria_nominal) == 1) { # only one nominal variable was passed
+                    devFromPerfect_1 <- max(check2d_table(tmpNomDistr_1))
+                    assignFailed     <- devFromPerfect_1 > tolerance_nominal[1]
+                } else if (length(criteria_nominal) == 2) { # two nominal criteria
+                    tmpNomData_2   <- unlist(itemDataRnd[criteria_nominal[2]])
+                    tmpNomDistr_2  <- table(itemDataRnd$newSet, tmpNomData_2)
+                    tmpNomDistr_intAct  <- table(itemDataRnd$newSet, tmpNomData_1, tmpNomData_2)
+                    
+                    devFromPerfect_1   <- max(check2d_table(tmpNomDistr_1))
+                    devFromPerfect_2   <- max(check2d_table(tmpNomDistr_2))
+                    devFromPerfect_int <- max(check3d_table(tmpNomDistr_intAct))
+                    assignFailed       <- (devFromPerfect_1 > tolerance_nominal[1]) |
+                        (devFromPerfect_2 > tolerance_nominal[2]) |
+                        (devFromPerfect_int > tolerance_nominal[3])
+                }
+                
+                ## check if assignment of nominal variables to new sets is as required
+                if (assignFailed) {
+                    ## data does not meet the required distribution of nominal variables
+                    ## make new!
+                    itemDataRnd <- data[with(data, order(sample(cases))), ]
+                    itemDataRnd$newSet <- setAssign
+                } else if (!assignFailed) {
+                    ## If we get here, distribution for all nominal
+                    ## variables is OK. nly such sets are considered
+                    ## further
+                    nominal_satisfied <- TRUE
+                }
             }
-            
-            # check if assignment of nominal variables to new sets is as required
-            if (assignFailed) {
-               # data does not meet the required distribution of nominal variables
-               # make new!
-               itemDataRnd <- data[with(data, order(sample(cases))), ]
-               itemDataRnd$newSet <- setAssign
-            } else if (!assignFailed) {
-               # If we get here, distribution for all nominal variables is OK
-               # only such sets are considered further
-               nominal_satisfied <- TRUE
-            }
-         }
-      }
-      
-      # NOMINAL CRITERIA ARE FINISHED
+        }
+        
+        ## NOMINAL CRITERIA ARE FINISHED
 
-      if (!is.null(criteria_scale)) {
-
-#          # NOW CONTINUOUS VARIABLES ARE CHECKED! What is done: Minimize variance between
-         # item sets in regard to the functions specified in argument `equalize`; `mean`
-         # is the default function for which differences between sets are minimized
-         sumVar <- checkVar(itemDataRnd, criteria_scale, equalize)
-         # Case: better fit was found, save the set
-         if (sumVar < best_var) {
-            cat("Success! Improved set similarity on iteration", i, "\n")
-            newSet  <- itemDataRnd
-            if (writeFile) { # write new best set to file
-               write.table(file="newSet.csv", newSet, dec=",", sep=";", row.names=FALSE)
+        if (!is.null(criteria_scale)) {
+            ## NOW CONTINUOUS VARIABLES ARE CHECKED! What is done: Minimize
+            ## variance between item sets in regard to the functions
+            ## specified in argument `equalize`; `mean` is the default
+            ## function for which differences between sets are
+            ## minimized. Checks the sum of variances of all criteria
+            ## (i.e. equal weight for each criterion and optimization
+            ## function)
+            sumVar <- checkVar(itemDataRnd, criteria_scale, equalize)
+                                        # Case: better fit was found, save the set
+            if (sumVar < best_var) {
+                cat("Success! Improved set similarity on iteration", i, "\n")
+                newSet  <- itemDataRnd
+                if (writeFile) { # write new best set to file
+                    write.table(file="newSet.csv", newSet, dec=",", sep=";", row.names=FALSE)
+                }
+                best_var <- sumVar
             }
-            best_var <- sumVar
-         }
-      # if no continuous criteria were specified
-      } else if (is.null(criteria_scale)) {
-         newSet <- itemDataRnd
-         break  # first hit is OK
-      }
-   }
+        ## if no continuous criteria were specified:
+        } else if (is.null(criteria_scale)) {
+            newSet <- itemDataRnd
+            break  # first hit is OK
+        }
+    }
     
-   ## END of all iterations
-   cat("End simulation ","-", format(Sys.time(), "%a %b %d %X %Y"), "\n")
-   if (writeFile) {
-      write.table(file="newSet.csv", newSet, dec=",", sep=";", row.names=FALSE)
-   }
-   return(newSet)
+    ## END of all iterations
+    cat("End simulation ","-", format(Sys.time(), "%a %b %d %X %Y"), "\n")
+    if (writeFile) {
+        write.table(file="newSet.csv", newSet, dec=",", sep=";", row.names=FALSE)
+    }
+    return(newSet)
+}
+
+checkInput <- function(data, criteria_scale=NULL, criteria_nominal) {
+
+    ## CHECK FOR ERRORS IN USER INPUT
+    errMsg <- "error in function reassign.set:"
+   
+    if (class(data) != "data.frame") {
+        stop(paste(errMsg, "first argument must be a data.frame"))
+    }
+    
+    if (length(criteria_nominal) > 2) {
+        stop(paste(errMsg, "only two nominal variables can be considered in set creation."))
+    }
+    
+    if (length(criteria_nominal) == 2 && length(tolerance_nominal) < 3) {
+        stop(paste(errMsg, "Three tolerance_nominal values must be passed if
+                          two nominal criteria are given."))
+    }
+    
+    for (i in c(criteria_scale, criteria_nominal)) {
+        if( is.na( match(i, names(data)) ))  {
+            stop(paste(errMsg, "`", i, "` is not a column in the passed data.frame", sep=""))
+        }
+    }
+    ## Warnings
+    ## no criterion was passed - just shuffle the data.frame
+    if (is.null(criteria_scale) && is.null(criteria_nominal)) {
+        warning("warning: no assignment criterion was passed.
+              Given data.frame is returned in random order.")
+        return(data[with(data, order(sample(cases))), ])
+    }
+    ## set number does not divide total number of cases, proceed but let user know
+    if (cases %% sets_n != 0) {
+        warning(paste(" set number (", sets_n, ") does not divide length of data (",
+                      cases, "). New sets will have unequal sizes.", sep=""))
+    }
+    ## check for NA values in criterion columns
+    test.frame <- data.frame(data[criteria_scale], data[criteria_nominal])
+    no.na      <- sum(apply(test.frame, 2, function(x) any(is.na(x)))) == 0
+    if (!no.na) {
+        warning("Warning: NA values were found in assigment criteria")
+    }
+    
 }
 
 
