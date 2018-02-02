@@ -183,7 +183,7 @@ create_groups <- function(data, criteria_scale=NULL, criteria_nominal=NULL,
          if (sumVar < best_var) {
             cat("Success! Improved set similarity on iteration", i, "\n")
             newSet  <- itemDataRnd
-            if (writeFile) { # write new best set to file
+            if (write_file) { # write new best set to file
                write.table(file="newSet.csv", newSet, dec=",", sep=";", row.names=FALSE)
             }
             best_var <- sumVar
@@ -197,7 +197,7 @@ create_groups <- function(data, criteria_scale=NULL, criteria_nominal=NULL,
     
    ## END of all iterations
    cat("End simulation ","-", format(Sys.time(), "%a %b %d %X %Y"), "\n")
-   if (writeFile) {
+   if (write_file) {
       write.table(file="newSet.csv", newSet, dec=",", sep=";", row.names=FALSE)
    }
    return(newSet)
