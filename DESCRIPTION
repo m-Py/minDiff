@@ -1,17 +1,17 @@
 Package: minDiff
-Type: Minimize differences between groups
-Title: 
+Type: Package
+Title: Minimize differences between groups
 Author: Martin Papenberg <martin.papenberg@hhu.de>
 Maintainer: Martin Papenberg <martin.papenberg@hhu.de>
-Depends:
-    R (>= 2.10.0)
+Depends: R (>= 2.10.0)
 Description: Assign any sort of elements to different groups and
-    minimize group differences
+        minimize group differences
 License: GPL (>= 2)
 Encoding: UTF-8
 LazyLoad: yes
+URL: https://github.com/m-Py/minDiff
 Authors@R: c(person(given="Martin", family="Papenberg",
         email="martin.papenberg@hhu.de", role=c("aut", "cre")))
-Version: 0.01-1
-Date: 2016-06-28
-RoxygenNote: 5.0.1
+Version: 0.01-2
+Date: 2018-02-02
+RoxygenNote: 6.0.1

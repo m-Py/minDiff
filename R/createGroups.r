@@ -1,46 +1,60 @@
-#' Function that assigns elements to equal sets
+#' Function that assigns elements to N sets and minimizes differences in
+#' sets.
 #'
-#' This function can be used to assign a set of items to N groups. Differences
-#' between groups are minimized in regard to specified criteria (E.g.: minimize
-#' differences in mean test scores between school classes).
+#' This function can be used to assign a set of items to N
+#' groups. Differences between groups are minimized in regard to
+#' specified criteria (E.g.: minimize differences in mean test scores
+#' between school classes).
 #'
-#' @param data A data.frame containing the set that is to be regrouped. All
-#'     assignment criteria must be columns of this data.frame.
-#' @param criteria_scale A string vector naming all continuous, numerical columns in
-#'     `data` that are to be considered as criteria in set assignment. Can be left
-#'     out if only nominal variables are to be equalized between groups.
-#' @param criteria_nominal A string vector naming all nominal column variables in
-#'     `data`, that are to be considered as criteria in set assignment. Can be left
-#'     out, if only continuous variables are to be equalized between groups. 
-#'     A maximum of two nominal criteria can be realized.
+#' @param data A data.frame containing the set that is to be
+#'     regrouped. All assignment criteria must be columns of this
+#'     data.frame.
+#' @param criteria_scale A string vector naming all continuous,
+#'     numerical columns in `data` that are to be considered as criteria
+#'     in set assignment. Can be left out if only nominal variables are
+#'     to be equalized between groups.
+#' @param criteria_nominal A string vector naming all nominal column
+#'     variables in `data`, that are to be considered as criteria in set
+#'     assignment. Can be left out, if only continuous variables are to
+#'     be equalized between groups.  A maximum of two nominal criteria
+#'     can be realized.
 #' @param sets_n How many equal groups are to be created.
 #' @param repetitions How many reassignment trials are to be made.
-#' @param tolerance_nominal Use only if argument `criteria_nominal` is also passed. This argument indicates the tolerated frequency deviations for nominal variables
-#'     (and their combinations) between newly created sets. Must be a one-value
-#'     vector if one nominal variable is passed; must be a three-value vector if two
-#'     nominal variables are passed (the second value is the tolerance value for the
-#'     second variable and the third value is the tolerance value for the
-#'     combinations of both variables). If unsure how to use this parameter, start 
-#'     using large tolerance values and observe the group assigments.
-#' @param equalize A list of functions. These functions determine which criterion is
-#'     minimized between sets: differences in function return values are
-#'     minimized. The default function that is operated on is `mean`; in this case,
-#'     the mean values of the specified criteria (via argument `criteria_scale`) are
-#'     matched between sets. Can be any function that returns a single value vector.
-#' @param writeFile Boolean. Will newly found better fitting sets be written to a
-#'     file automatically? (This is helpful if your simulation runs unexpectedly 
-#'     long and you need to kill it; in this case the best match is not lost)
+#' @param tolerance_nominal Use only if argument `criteria_nominal` is
+#'     also passed. This argument indicates the tolerated frequency
+#'     deviations for nominal variables (and their combinations) between
+#'     newly created sets. Must be a one-value vector if one nominal
+#'     variable is passed; must be a three-value vector if two nominal
+#'     variables are passed (the second value is the tolerance value for
+#'     the second variable and the third value is the tolerance value
+#'     for the combinations of both variables). If unsure how to use
+#'     this parameter, start using large tolerance values and observe
+#'     the group assigments.
+#' @param equalize A list of functions. These functions determine which
+#'     criterion is minimized between sets: differences in function
+#'     return values are minimized. The default function that is
+#'     operated on is `mean`; in this case, the mean values of the
+#'     specified criteria (via argument `criteria_scale`) are matched
+#'     between sets. Can be any function that returns a single value
+#'     vector.
+#' @param write_file Boolean. Will newly found better fitting sets be
+#'     written to a file automatically? (This is helpful if your
+#'     simulation runs unexpectedly long and you need to kill it; in
+#'     this case the best match is not lost). Defaults to `FALSE`.
 #'
-#' @return A \code{data.frame}. Contains all columns from argument `data` and
-#'     additionally a column variable `$newSet`. This columns contains the set
-#'     assigment that produced the best fit in the previous iterations.
+#' @return A \code{data.frame}. Contains all columns from argument
+#'     `data` and additionally a column variable `$newSet`. This columns
+#'     contains the set assigment that produced the best fit in the
+#'     previous iterations.
+#' 
 #' @export
+#' 
 #' @author Martin Papenberg \email{martin.papenberg@@hhu.de}
 #'
 
-createGroups <- function(data, criteria_scale=NULL, criteria_nominal=NULL,
+create_groups <- function(data, criteria_scale=NULL, criteria_nominal=NULL,
                          sets_n, repetitions=1, tolerance_nominal=rep(Inf, 3),
-                         equalize=list(mean), writeFile = TRUE) {
+                         equalize=list(mean), write_file = FALSE) {
 
    # how many items are to be reassigned
    cases <- nrow(data)

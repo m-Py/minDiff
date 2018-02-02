@@ -5,18 +5,19 @@
 \alias{minDiff-package}
 \title{The minDiff Package}
 \description{
-.
+Minimize differences between groups.
 }
 \details{
 \tabular{ll}{
 Package: \tab minDiff\cr
 Type: \tab Package\cr
-Version: \tab 0.01-1\cr
-Date: \tab 2016-06-28\cr
+Version: \tab 0.01-2\cr
+Date: \tab 2018-02-02\cr
 Depends: \tab R (>= 2.10.0)\cr
 Encoding: \tab UTF-8\cr
 License: \tab GPL (>= 2)\cr
 LazyLoad: \tab yes\cr
+URL: \tab https://github.com/m-Py/minDiff\cr
 }
 
 Assign any sort of elements to different groups and minimize group differences
@@ -25,4 +26,3 @@ Assign any sort of elements to different groups and minimize group differences
 Martin Papenberg
 }
 \keyword{package}
-
