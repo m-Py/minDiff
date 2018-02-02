@@ -6,15 +6,15 @@
 #' specified criteria (E.g.: minimize differences in mean test scores
 #' between school classes).
 #'
-#' @param data A data.frame containing the set that is to be
+#' @param dat A data.frame containing the set that is to be
 #'     regrouped. All assignment criteria must be columns of this
 #'     data.frame.
 #' @param criteria_scale A string vector naming all continuous,
-#'     numerical columns in `data` that are to be considered as criteria
+#'     numerical columns in `dat` that are to be considered as criteria
 #'     in set assignment. Can be left out if only nominal variables are
 #'     to be equalized between groups.
 #' @param criteria_nominal A string vector naming all nominal column
-#'     variables in `data`, that are to be considered as criteria in set
+#'     variables in `dat`, that are to be considered as criteria in set
 #'     assignment. Can be left out, if only continuous variables are to
 #'     be equalized between groups.  A maximum of two nominal criteria
 #'     can be realized.
@@ -27,9 +27,10 @@
 #'     variable is passed; must be a three-value vector if two nominal
 #'     variables are passed (the second value is the tolerance value for
 #'     the second variable and the third value is the tolerance value
-#'     for the combinations of both variables). If unsure how to use
-#'     this parameter, start using large tolerance values and observe
-#'     the group assigments.
+#'     for the combinations of both variables). It is possible that no
+#'     assignment will be found that fits the tolerance requirements; if
+#'     unsure how to use this parameter, start using large tolerance
+#'     values and observe the group assigments.
 #' @param equalize A list of functions. These functions determine which
 #'     criterion is minimized between sets: differences in function
 #'     return values are minimized. The default function that is
@@ -42,38 +43,38 @@
 #'     simulation runs unexpectedly long and you need to kill it; in
 #'     this case the best match is not lost). Defaults to `FALSE`.
 #'
-#' @return A \code{data.frame}. Contains all columns from argument
-#'     `data` and additionally a column variable `$newSet`. This columns
-#'     contains the set assigment that produced the best fit in the
-#'     previous iterations.
+#' @return A \code{data.frame}. Contains all columns from argument `dat`
+#'     and additionally a column variable `$newSet`. This columns
+#'     contains the set assigment that produced the best fit to the
+#'     specified criteria.
 #' 
 #' @export
 #' 
 #' @author Martin Papenberg \email{martin.papenberg@@hhu.de}
 #'
 
-create_groups <- function(data, criteria_scale=NULL, criteria_nominal=NULL,
+create_groups <- function(dat, criteria_scale=NULL, criteria_nominal=NULL,
                           sets_n, repetitions=1, tolerance_nominal=rep(Inf, 3),
                           equalize=list(mean), write_file = FALSE) {
     ## how many items are to be reassigned:
-    cases <- nrow(data)
+    cases <- nrow(dat)
     ## Check for errors and warnings
-    checkInput(data, criteria_scale, criteria_nominal, cases)
+    checkInput(dat, sets_n, criteria_scale, criteria_nominal, cases)
 
     ## initialize a variable that encodes the assignment to groups
     setAssign <- sort(rep_len(1:sets_n, cases))
     
     ## Check if a set was passed that was optizmized in a recent run
-    if (!is.null(data$newSet)) {
-        if (length(unique(data$newSet)) != sets_n) {
+    if (!is.null(dat$newSet)) {
+        if (length(unique(dat$newSet)) != sets_n) {
             stop(paste("Variable newSet was found in data.frame
                that was passed. Number of different groups in variable
                newSet is not equal to the value that was passed via
                argument `sets_n`"))
         }
         cat("Variable newSet was found - trying to improve previous optimization \n")
-        best_var    <- checkVar(data, criteria_scale, equalize)
-        best_assign <- data$newSet
+        best_var    <- checkVar(dat, criteria_scale, equalize)
+        best_assign <- dat$newSet
     } else { ## -> start from scratch
         best_var <- Inf # start value of variance between new sets
         best_assign <- NULL
@@ -87,28 +88,28 @@ create_groups <- function(data, criteria_scale=NULL, criteria_nominal=NULL,
         
         ## generate new set assignment
         setAssign   <- sample(setAssign)
-        data$newSet <- setAssign
+        dat$newSet <- setAssign
         
-        ## check nominal criteria
+        ## check nominal criteria - only use this assignment if the
+        ## nominal criteria are satisfied
         if (!is.null(criteria_nominal)) {
-            check_nominal(data, criteria_nominal, tolerance_nominal, cases)
+            nominal_okay <- check_nominal(dat, criteria_nominal, tolerance_nominal, cases)
+            if (!nominal_okay) next
         }
         ## NOW CONTINUOUS VARIABLES ARE CHECKED! What is done: Minimize
         ## variance between item sets in regard to the functions
         ## specified in argument `equalize`; `mean` is the default
-        ## function for which differences between sets are
-        ## minimized. Checks the sum of variances of all criteria
-        ## (i.e. equal weight for each criterion and optimization
-        ## function)
+        ## function for which differences between sets are minimized.
         if (!is.null(criteria_scale)) {
-            ## check the sum of the deviation variance:
-            sumVar <- checkVar(data, criteria_scale, equalize)
-            ## Case: better fit was found, save the set
+            ## check the sum of the deviation variance in all criteria
+            ## for this assignment:
+            sumVar <- checkVar(dat, criteria_scale, equalize)
+            ## Better fit was found, save the assignment
             if (sumVar < best_var) {
                 cat("Success! Improved set similarity on iteration", i, "\n")
                 best_assign <- setAssign
                 if (write_file) { # write new best set to file
-                    write.table(file="newSet.csv", data, dec=",",
+                    write.table(file="newSet.csv", dat, dec=",",
                                 sep=";", row.names=FALSE)
                 }
                 best_var <- sumVar
@@ -117,66 +118,27 @@ create_groups <- function(data, criteria_scale=NULL, criteria_nominal=NULL,
     }
     ## END of all iterations
 
-    data$newSet <- best_assign
+    if (is.null(best_assign)) {
+        warning("No assignment was found satisfying the restrictions in nominal criteria. Try to increase the `tolerance_nominal` parameter or increase `repetitions`.")
+    }
+    
+    dat$newSet <- best_assign
     
     cat("End simulation ","-", format(Sys.time(), "%a %b %d %X %Y"), "\n")
     if (write_file) {
-        write.table(file="newSet.csv", data, dec=",", sep=";",
+        write.table(file="newSet.csv", dat, dec=",", sep=";",
                     row.names=FALSE)
     }
-    return(data)
+    return(dat)
 }
 
-## method that checks if the group assigment is consistent with the
-## specified tolerance level for deviation in categorical variables:
-check_nominal <- function(itemDataRnd, criteria_nominal,
-                          tolerance_nominal, cases) {      
-    ## Check if nominal variables are OK
-    ## Nominal variable checking is done in the following WHILE loop
-    if (!is.null(criteria_nominal)) {
-        number_criteria_nominal <- length(criteria_nominal) 
-        nominal_satisfied <- FALSE
-        while (nominal_satisfied == FALSE) {
-            ## how is first nominal variable in the new sets distributed
-            tmpNomData_1   <- unlist(itemDataRnd[criteria_nominal[1]])
-            tmpNomDistr_1  <- table(itemDataRnd$newSet, tmpNomData_1)
-            if (length(criteria_nominal) == 1) { # only one nominal variable was passed
-                devFromPerfect_1 <- max(check2d_table(tmpNomDistr_1))
-                assignFailed     <- devFromPerfect_1 > tolerance_nominal[1]
-            } else if (length(criteria_nominal) == 2) { # two nominal criteria
-                tmpNomData_2   <- unlist(itemDataRnd[criteria_nominal[2]])
-                tmpNomDistr_2  <- table(itemDataRnd$newSet, tmpNomData_2)
-                tmpNomDistr_intAct  <- table(itemDataRnd$newSet, tmpNomData_1, tmpNomData_2)
-                
-                devFromPerfect_1   <- max(check2d_table(tmpNomDistr_1))
-                devFromPerfect_2   <- max(check2d_table(tmpNomDistr_2))
-                devFromPerfect_int <- max(check3d_table(tmpNomDistr_intAct))
-                assignFailed       <- (devFromPerfect_1 > tolerance_nominal[1]) |
-                    (devFromPerfect_2 > tolerance_nominal[2]) |
-                    (devFromPerfect_int > tolerance_nominal[3])
-            }
-            
-            ## check if assignment of nominal variables to new sets is as required
-            if (assignFailed) {
-                ## data does not meet the required distribution of nominal variables
-                ## make new!
-                itemDataRnd <- data[with(data, order(sample(cases))), ]
-                itemDataRnd$newSet <- setAssign
-            } else if (!assignFailed) {
-                ## If we get here, distribution for all nominal
-                ## variables is OK. Only such sets are considered further
-                nominal_satisfied <- TRUE
-            }
-        }
-    }
-}
-
-checkInput <- function(data, sets_n, criteria_scale, criteria_nominal, cases) {
-
+## Method that checks the user input and generates error or warning messsages
+checkInput <- function(dat, sets_n, criteria_scale, criteria_nominal, cases) {
+    
     ## CHECK FOR ERRORS IN USER INPUT
     errMsg <- "error in function reassign.set:"
    
-    if (class(data) != "data.frame") {
+    if (class(dat) != "data.frame") {
         stop(paste(errMsg, "first argument must be a data.frame"))
     }
     
@@ -190,29 +152,62 @@ checkInput <- function(data, sets_n, criteria_scale, criteria_nominal, cases) {
     }
     
     for (i in c(criteria_scale, criteria_nominal)) {
-        if( is.na( match(i, names(data)) ))  {
+        if( is.na( match(i, names(dat)) ))  {
             stop(paste(errMsg, "`", i, "` is not a column in the passed data.frame", sep=""))
         }
     }
-    ## Warnings
-    ## no criterion was passed - just shuffle the data.frame
+    ## no criterion was passed: Abort
     if (is.null(criteria_scale) && is.null(criteria_nominal)) {
-        warning("warning: no assignment criterion was passed.
-              Given data.frame is returned in random order.")
-        return(data[with(data, order(sample(cases))), ])
+        stop(paste(errMsg, "no assignment criterion was passed."))
     }
+    
+    ## Warnings
     ## set number does not divide total number of cases, proceed but let user know
     if (cases %% sets_n != 0) {
         warning(paste(" set number (", sets_n, ") does not divide length of data (",
                       cases, "). New sets will have unequal sizes.", sep=""))
     }
     ## check for NA values in criterion columns
-    test.frame <- data.frame(data[criteria_scale], data[criteria_nominal])
+    test.frame <- data.frame(dat[criteria_scale], dat[criteria_nominal])
     no.na      <- sum(apply(test.frame, 2, function(x) any(is.na(x)))) == 0
     if (!no.na) {
-        warning("Warning: NA values were found in assigment criteria")
+        warning("Warning: criteria contained NA values.")
+    }
+}
+
+## method that checks if the group assigment is consistent with the
+## specified tolerance level for deviation in categorical variables:
+check_nominal <- function(itemDataRnd, criteria_nominal,
+                          tolerance_nominal, cases) {      
+    ## Check if nominal variables are OK
+    ## Nominal variable checking is done in the following WHILE loop
+    number_criteria_nominal <- length(criteria_nominal) 
+    nominal_satisfied <- FALSE
+    
+    ## how is first nominal variable in the new sets distributed
+    tmpNomData_1   <- unlist(itemDataRnd[criteria_nominal[1]])
+    tmpNomDistr_1  <- table(itemDataRnd$newSet, tmpNomData_1)
+    if (length(criteria_nominal) == 1) { # only one nominal variable was passed
+        devFromPerfect_1 <- max(check2d_table(tmpNomDistr_1))
+        assignFailed     <- devFromPerfect_1 > tolerance_nominal[1]
+    } else if (length(criteria_nominal) == 2) { # two nominal criteria
+        tmpNomData_2   <- unlist(itemDataRnd[criteria_nominal[2]])
+        tmpNomDistr_2  <- table(itemDataRnd$newSet, tmpNomData_2)
+        tmpNomDistr_intAct  <- table(itemDataRnd$newSet, tmpNomData_1, tmpNomData_2)
+        
+        devFromPerfect_1   <- max(check2d_table(tmpNomDistr_1))
+        devFromPerfect_2   <- max(check2d_table(tmpNomDistr_2))
+        devFromPerfect_int <- max(check3d_table(tmpNomDistr_intAct))
+        assignFailed       <- (devFromPerfect_1 > tolerance_nominal[1]) |
+            (devFromPerfect_2 > tolerance_nominal[2]) |
+            (devFromPerfect_int > tolerance_nominal[3])
     }
     
+    ## check if assignment of nominal variables to new sets is as required
+    if (!assignFailed) {
+        nominal_satisfied <- TRUE
+    }
+    return(nominal_satisfied)
 }
 
 # method that returns the total variance between groups in all scale
@@ -259,4 +254,52 @@ check3d_table <- function(d3_table) {
       differences <- c(differences, check2d_table(d3_table[,,i]))
    }
    return(differences)
+}
+
+
+#' Get the next permutation 
+#'
+#' Generates the permutations of the AP compounds used in the
+#' `complete_enumeration` algorithm. Each permutation is computed on
+#' basis of the previous permutation where lexicographic ordering of the
+#' permutations is used to determine the next "higher" permutation. This
+#' ensures that no permutations need to be stored in memory, which would
+#' be a problem for large instances of AP. This is an adaption of the
+#' `next_permutation` function in C++.  (see
+#' http://wordaligned.org/articles/next-permutation)
+#'
+#' @param A permutation: a numeric vector of unique numbers
+#'
+#' @return The next higher permutation with regard to its lexicographic
+#'     ordering.
+#'
+#' @author Martin Papenberg \email{martin.papenberg@@hhu.de}
+#' 
+next_permutation <- function(permutation) {
+    n    <- length(permutation)
+    last <- permutation[n]
+    i    <- n
+    while(last < permutation[i-1]) {
+        last <- permutation[i-1]
+        i    <- i - 1
+        ## if lexicographic order is already at the maximum:
+        if (i-1 == 0) return(sort(permutation))
+    }
+    ## this algorithm divides the input in a head and a tail; the tail
+    ## is monotonically decreasing
+    head <- permutation[1:(i-1)]
+    tail <- permutation[i:length(permutation)]
+    print(head)
+    print(tail)
+    ## which element in the tail is the smallest element that is larger
+    ## than the last element in the head?
+    larger_values  <- tail[tail > head[length(head)]]
+    ## last element of the head:
+    final_head <- head[length(head)]
+    ## replace last element of head by smallest larger value in tail
+    head[length(head)] <- min(larger_values)
+    ## replace smallest larger value in tail by final head element
+    tail[which(tail == min(larger_values))] <- final_head
+    ## reverse tail before returning
+    return(c(head, rev(tail)))
 }
