@@ -19,7 +19,12 @@
 #'     be equalized between groups.  A maximum of two nominal criteria
 #'     can be realized.
 #' @param sets_n How many equal groups are to be created.
-#' @param repetitions How many reassignment trials are to be made.
+#' @param repetitions How many random assignments are to be tested. Only
+#'     use if `exact` == FALSE.
+#' @param exact Should _all_ possible assignments be tested resulting in
+#'     the optimal solution. Defaults to `FALSE`, in which case a random
+#'     subset of assignments will be tested. Is not advised for large
+#'     input.
 #' @param tolerance_nominal Use only if argument `criteria_nominal` is
 #'     also passed. This argument indicates the tolerated frequency
 #'     deviations for nominal variables (and their combinations) between
@@ -54,15 +59,19 @@
 #'
 
 create_groups <- function(dat, criteria_scale=NULL, criteria_nominal=NULL,
-                          sets_n, repetitions=1, tolerance_nominal=rep(Inf, 3),
+                          sets_n, repetitions=1, exact = FALSE,
+                          tolerance_nominal=rep(Inf, 3),
                           equalize=list(mean), write_file = FALSE) {
-    ## how many items are to be reassigned:
+
+    ## How many items are to be reassigned:
     cases <- nrow(dat)
     ## Check for errors and warnings
     checkInput(dat, sets_n, criteria_scale, criteria_nominal, cases)
 
-    ## initialize a variable that encodes the assignment to groups
-    setAssign <- sort(rep_len(1:sets_n, cases))
+    ## Initialize a variable that encodes the assignment to groups
+    setAssign  <- sort(rep_len(1:sets_n, cases))
+    ## the first permutation - when you get back here, end
+    initAssign <- setAssign
     
     ## Check if a set was passed that was optizmized in a recent run
     if (!is.null(dat$newSet)) {
@@ -79,18 +88,46 @@ create_groups <- function(dat, criteria_scale=NULL, criteria_nominal=NULL,
         best_var <- Inf # start value of variance between new sets
         best_assign <- NULL
     }
-   
+
+    ## set condition which is tested while the loop runs; depends on
+    ## whether an exact or randomized assignment is conducted
+    if (exact == FALSE) {
+        ## if random sampling is conducted: 
+        condition <- expression(i < repetitions)
+        partials  <- ceiling(repetitions / 10)
+    } else {
+        ## if exact solution is required: test if the next permutation
+        ## is the first permutation; then all assignments have been
+        ## tested:
+        condition <- expression(!all(next_permutation(setAssign) == initAssign))
+        approx_rep <- sets_n^cases
+        ## partials is used to give feedback on which iteration the
+        ## assignment is running
+        partials   <- ceiling(approx_rep / 100)
+    }
+
     ## START iterating
     cat("Start simulation ","-", format(Sys.time(), "%a %b %d %X %Y"), "\n")
-    for (i in 1:repetitions) {
-        partials <- ceiling(repetitions / 10)
-        if (i %% partials == 0) { cat("working on iteration", i, "\n") }
+    i <- 1
+    while (eval(condition)) {
+
+        ## generate set assignment:
+        if (exact == FALSE) {
+            setAssign  <- sample(setAssign)
+        } else {
+            setAssign  <- next_permutation(setAssign)
+        }
+
+        ## Some output for user:
         
-        ## generate new set assignment
-        setAssign   <- sample(setAssign)
+        if (i %% partials == 0) {
+            cat("working on iteration", i, "\n")
+        }
+        i <- i + 1
+        
         dat$newSet <- setAssign
         
-        ## check nominal criteria - only use this assignment if the
+        ## Check nominal criteria - only use this assignment if the
         ## nominal criteria are satisfied
         if (!is.null(criteria_nominal)) {
             nominal_okay <- check_nominal(dat, criteria_nominal, tolerance_nominal, cases)
@@ -119,9 +156,9 @@ create_groups <- function(dat, criteria_scale=NULL, criteria_nominal=NULL,
     ## END of all iterations
 
     if (is.null(best_assign)) {
-        warning("No assignment was found satisfying the restrictions in nominal criteria. Try to increase the `tolerance_nominal` parameter or increase `repetitions`.")
+        warning("No assignment was found satisfying the restrictions in your nominal criteria. Try to increase the `tolerance_nominal` parameter or increase `repetitions`.")
     }
-    
+
     dat$newSet <- best_assign
     
     cat("End simulation ","-", format(Sys.time(), "%a %b %d %X %Y"), "\n")
@@ -178,10 +215,10 @@ checkInput <- function(dat, sets_n, criteria_scale, criteria_nominal, cases) {
 ## method that checks if the group assigment is consistent with the
 ## specified tolerance level for deviation in categorical variables:
 check_nominal <- function(itemDataRnd, criteria_nominal,
-                          tolerance_nominal, cases) {      
+                          tolerance_nominal, cases) {
     ## Check if nominal variables are OK
     ## Nominal variable checking is done in the following WHILE loop
-    number_criteria_nominal <- length(criteria_nominal) 
+    number_criteria_nominal <- length(criteria_nominal)
     nominal_satisfied <- FALSE
     
     ## how is first nominal variable in the new sets distributed
@@ -256,30 +293,28 @@ check3d_table <- function(d3_table) {
    return(differences)
 }
 
-
 #' Get the next permutation 
 #'
-#' Generates the permutations of the AP compounds used in the
-#' `complete_enumeration` algorithm. Each permutation is computed on
-#' basis of the previous permutation where lexicographic ordering of the
-#' permutations is used to determine the next "higher" permutation. This
-#' ensures that no permutations need to be stored in memory, which would
-#' be a problem for large instances of AP. This is an adaption of the
+#' Each permutation is computed on basis of a passed permutation where
+#' lexicographic ordering of the permutations is used to determine the
+#' next "higher" permutation. This is an adaption of the
 #' `next_permutation` function in C++.  (see
 #' http://wordaligned.org/articles/next-permutation)
 #'
-#' @param A permutation: a numeric vector of unique numbers
+#' @param A a numeric vector of numbers. Numbers need not be unique.
 #'
 #' @return The next higher permutation with regard to its lexicographic
 #'     ordering.
 #'
+#' @export
+#' 
 #' @author Martin Papenberg \email{martin.papenberg@@hhu.de}
 #' 
 next_permutation <- function(permutation) {
     n    <- length(permutation)
     last <- permutation[n]
     i    <- n
-    while(last < permutation[i-1]) {
+    while(last <= permutation[i-1]) {
         last <- permutation[i-1]
         i    <- i - 1
         ## if lexicographic order is already at the maximum:
@@ -289,17 +324,15 @@ next_permutation <- function(permutation) {
     ## is monotonically decreasing
     head <- permutation[1:(i-1)]
     tail <- permutation[i:length(permutation)]
-    print(head)
-    print(tail)
     ## which element in the tail is the smallest element that is larger
     ## than the last element in the head?
     larger_values  <- tail[tail > head[length(head)]]
     ## last element of the head:
     final_head <- head[length(head)]
     ## replace last element of head by smallest larger value in tail
-    head[length(head)] <- min(larger_values)
+    head[length(head)] <- min(larger_values)  
     ## replace smallest larger value in tail by final head element
-    tail[which(tail == min(larger_values))] <- final_head
+    tail[max(which(tail == min(larger_values)))] <- final_head
     ## reverse tail before returning
     return(c(head, rev(tail)))
 }
