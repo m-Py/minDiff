@@ -242,6 +242,13 @@ check_nominal <- function(itemDataRnd, criteria_nominal,
     return(nominal_satisfied)
 }
 
+create_weight_matrix <- function(criteria_scale, equalize) {
+    mat <- matrix(ncol = length(criteria_scale), nrow=length(equalize))
+    rownames(mat) <- as.character(substitute(c(mean, sd)))[-1]
+    colnames(mat) <- criteria_scale
+    return(mat)
+}
+
 # method that returns the total variance between groups in all scale
 # criteria
 checkVar <- function(data, criteria_scale, equalize) {
