@@ -21,10 +21,9 @@
 #' @param sets_n How many equal groups are to be created.
 #' @param repetitions How many random assignments are to be tested. Only
 #'     use if `exact` == FALSE.
-#' @param exact Should _all_ possible assignments be tested resulting in
+#' @param exact Should _all_ possible assignments be tested? This yields
 #'     the optimal solution. Defaults to `FALSE`, in which case a random
-#'     subset of assignments will be tested. Is not advised for large
-#'     input.
+#'     subset of all possible assignments will be tested.
 #' @param tolerance_nominal Use only if argument `criteria_nominal` is
 #'     also passed. This argument indicates the tolerated frequency
 #'     deviations for nominal variables (and their combinations) between
@@ -47,6 +46,7 @@
 #'     written to a file automatically? (This is helpful if your
 #'     simulation runs unexpectedly long and you need to kill it; in
 #'     this case the best match is not lost). Defaults to `FALSE`.
+#' @param talk Boolean. If `TRUE`, the function will print its progress.
 #'
 #' @return A \code{data.frame}. Contains all columns from argument `dat`
 #'     and additionally a column variable `$newSet`. This columns
@@ -61,7 +61,8 @@
 create_groups <- function(dat, criteria_scale=NULL, criteria_nominal=NULL,
                           sets_n, repetitions=1, exact = FALSE,
                           tolerance_nominal=rep(Inf, 3),
-                          equalize=list(mean), write_file = FALSE) {
+                          equalize=list(mean), write_file = FALSE,
+                          talk = TRUE) {
 
     ## How many items are to be reassigned:
     cases <- nrow(dat)
@@ -70,8 +71,6 @@ create_groups <- function(dat, criteria_scale=NULL, criteria_nominal=NULL,
 
     ## Initialize a variable that encodes the assignment to groups
     setAssign  <- sort(rep_len(1:sets_n, cases))
-    ## the first permutation - when you get back here, end
-    initAssign <- setAssign
     
     ## Check if a set was passed that was optizmized in a recent run
     if (!is.null(dat$newSet)) {
@@ -81,7 +80,8 @@ create_groups <- function(dat, criteria_scale=NULL, criteria_nominal=NULL,
                newSet is not equal to the value that was passed via
                argument `sets_n`"))
         }
-        cat("Variable newSet was found - trying to improve previous optimization \n")
+        if (talk)
+            cat("Variable newSet was found - trying to improve previous optimization \n")
         best_var    <- checkVar(dat, criteria_scale, equalize)
         best_assign <- dat$newSet
     } else { ## -> start from scratch
@@ -89,27 +89,18 @@ create_groups <- function(dat, criteria_scale=NULL, criteria_nominal=NULL,
         best_assign <- NULL
     }
 
-    ## set condition which is tested while the loop runs; depends on
-    ## whether an exact or randomized assignment is conducted
-    if (exact == FALSE) {
-        ## if random sampling is conducted: 
-        condition <- expression(i < repetitions)
-        partials  <- ceiling(repetitions / 10)
-    } else {
-        ## if exact solution is required: test if the next permutation
-        ## is the first permutation; then all assignments have been
-        ## tested:
-        condition <- expression(!all(next_permutation(setAssign) == initAssign))
-        approx_rep <- sets_n^cases
-        ## partials is used to give feedback on which iteration the
-        ## assignment is running
-        partials   <- ceiling(approx_rep / 100)
+    if (exact == TRUE) {
+        repetitions <- all_combinations(table(setAssign))
     }
-
+    ## for user output
+    partials   <- ceiling(repetitions / 10)
+    
     ## START iterating
-    cat("Start simulation ","-", format(Sys.time(), "%a %b %d %X %Y"), "\n")
+    if (talk)
+        cat("Start iteration 1 of", repetitions, "-", format(Sys.time(), "%a %b %d %X %Y"), "\n")
+
     i <- 1
-    while (eval(condition)) {
+    while (i <= repetitions) {
 
         ## generate set assignment:
         if (exact == FALSE) {
@@ -117,15 +108,12 @@ create_groups <- function(dat, criteria_scale=NULL, criteria_nominal=NULL,
         } else {
             setAssign  <- next_permutation(setAssign)
         }
-
-        ## Some output for user:
+        dat$newSet <- setAssign
         
-        if (i %% partials == 0) {
+        ## Some output for user:
+        if (i %% partials == 0 & talk) {
             cat("working on iteration", i, "\n")
         }
-        i <- i + 1
-        
-        dat$newSet <- setAssign
         
         ## Check nominal criteria - only use this assignment if the
         ## nominal criteria are satisfied
@@ -133,7 +121,8 @@ create_groups <- function(dat, criteria_scale=NULL, criteria_nominal=NULL,
             nominal_okay <- check_nominal(dat, criteria_nominal, tolerance_nominal, cases)
             if (!nominal_okay) next
         }
-        ## NOW CONTINUOUS VARIABLES ARE CHECKED! What is done: Minimize
+        
+        ## NOW CONTINUOUS VARIABLES ARE CHECKED: What is done: Minimize
         ## variance between item sets in regard to the functions
         ## specified in argument `equalize`; `mean` is the default
         ## function for which differences between sets are minimized.
@@ -143,15 +132,14 @@ create_groups <- function(dat, criteria_scale=NULL, criteria_nominal=NULL,
             sumVar <- checkVar(dat, criteria_scale, equalize)
             ## Better fit was found, save the assignment
             if (sumVar < best_var) {
-                cat("Success! Improved set similarity on iteration", i, "\n")
+                if (talk)
+                    cat("Success! Improved set similarity on iteration", i, "\n")
                 best_assign <- setAssign
-                if (write_file) { # write new best set to file
-                    write.table(file="newSet.csv", dat, dec=",",
-                                sep=";", row.names=FALSE)
-                }
                 best_var <- sumVar
+                write_file(write_file, dat)
             }
         }
+        i <- i + 1
     }
     ## END of all iterations
 
@@ -159,14 +147,21 @@ create_groups <- function(dat, criteria_scale=NULL, criteria_nominal=NULL,
         warning("No assignment was found satisfying the restrictions in your nominal criteria. Try to increase the `tolerance_nominal` parameter or increase `repetitions`.")
     }
 
+    ## return best assignment:
     dat$newSet <- best_assign
+    write_file(write_file, dat)
     
-    cat("End simulation ","-", format(Sys.time(), "%a %b %d %X %Y"), "\n")
-    if (write_file) {
+    if (talk)
+        cat("End of iteration", repetitions, "-", format(Sys.time(), "%a %b %d %X %Y"), "\n")
+
+    return(dat)
+}
+
+write_file <- function(write, dat) {
+    if (write) {
         write.table(file="newSet.csv", dat, dec=",", sep=";",
                     row.names=FALSE)
     }
-    return(dat)
 }
 
 ## Method that checks the user input and generates error or warning messsages
@@ -201,8 +196,8 @@ checkInput <- function(dat, sets_n, criteria_scale, criteria_nominal, cases) {
     ## Warnings
     ## set number does not divide total number of cases, proceed but let user know
     if (cases %% sets_n != 0) {
-        warning(paste(" set number (", sets_n, ") does not divide length of data (",
-                      cases, "). New sets will have unequal sizes.", sep=""))
+        warning(paste("Set number (", sets_n, ") does not divide length of data (",
+                      cases, "). Sets have unequal sizes.", sep=""))
     }
     ## check for NA values in criterion columns
     test.frame <- data.frame(dat[criteria_scale], dat[criteria_nominal])
@@ -298,13 +293,12 @@ check3d_table <- function(d3_table) {
 #' Each permutation is computed on basis of a passed permutation where
 #' lexicographic ordering of the permutations is used to determine the
 #' next "higher" permutation. This is an adaption of the
-#' `next_permutation` function in C++.  (see
-#' http://wordaligned.org/articles/next-permutation)
+#' `next_permutation` function in C++.
 #'
-#' @param A a numeric vector of numbers. Numbers need not be unique.
+#' @param permutation A vector of elements.
 #'
-#' @return The next higher permutation with regard to its lexicographic
-#'     ordering.
+#' @return The next higher permutation of the elements in vector
+#'     `permutation` with regard to its lexicographic ordering.
 #'
 #' @export
 #' 
@@ -335,4 +329,19 @@ next_permutation <- function(permutation) {
     tail[max(which(tail == min(larger_values)))] <- final_head
     ## reverse tail before returning
     return(c(head, rev(tail)))
+}
+
+#' Compute the number of all possible set assignments
+#' 
+#' @param x A vector of N set sizes
+#' 
+#' @return The number of all possible assignments to N sets
+#'
+all_combinations <- function(x) {
+    set_size <- c(sum(x), sum(x) - cumsum(x))
+    result   <- 1
+    for (i in 1:(length(x)-1)) {
+        result <- result * choose(set_size[i], x[i])
+    }
+    return(result)
 }
