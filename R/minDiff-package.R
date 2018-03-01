@@ -3,8 +3,8 @@
 #' \tabular{ll}{
 #' Package: \tab minDiff\cr
 #' Type: \tab Package\cr
-#' Version: \tab 0.01-2\cr
-#' Date: \tab 2018-02-02\cr
+#' Version: \tab 0.01-3\cr
+#' Date: \tab 2018-02-14\cr
 #' Depends: \tab R (>= 2.10.0)\cr
 #' Encoding: \tab UTF-8\cr
 #' License: \tab GPL (>= 2)\cr

@@ -5,29 +5,34 @@
 \title{Function that assigns elements to N sets and minimizes differences in
 sets.}
 \usage{
-create_groups(data, criteria_scale = NULL, criteria_nominal = NULL, sets_n,
-  repetitions = 1, tolerance_nominal = rep(Inf, 3), equalize = list(mean),
-  write_file = FALSE)
+create_groups(dat, criteria_scale = NULL, criteria_nominal = NULL, sets_n,
+  repetitions = 1, exact = FALSE, tolerance_nominal = rep(Inf, 3),
+  equalize = list(mean), write_file = FALSE, talk = TRUE)
 }
 \arguments{
-\item{data}{A data.frame containing the set that is to be
+\item{dat}{A data.frame containing the set that is to be
 regrouped. All assignment criteria must be columns of this
 data.frame.}
 
 \item{criteria_scale}{A string vector naming all continuous,
-numerical columns in `data` that are to be considered as criteria
+numerical columns in `dat` that are to be considered as criteria
 in set assignment. Can be left out if only nominal variables are
 to be equalized between groups.}
 
 \item{criteria_nominal}{A string vector naming all nominal column
-variables in `data`, that are to be considered as criteria in set
+variables in `dat`, that are to be considered as criteria in set
 assignment. Can be left out, if only continuous variables are to
 be equalized between groups.  A maximum of two nominal criteria
 can be realized.}
 
 \item{sets_n}{How many equal groups are to be created.}
 
-\item{repetitions}{How many reassignment trials are to be made.}
+\item{repetitions}{How many random assignments are to be tested. Only
+use if `exact` == FALSE.}
+
+\item{exact}{Should _all_ possible assignments be tested? This yields
+the optimal solution. Defaults to `FALSE`, in which case a random
+subset of all possible assignments will be tested.}
 
 \item{tolerance_nominal}{Use only if argument `criteria_nominal` is
 also passed. This argument indicates the tolerated frequency
@@ -36,9 +41,10 @@ newly created sets. Must be a one-value vector if one nominal
 variable is passed; must be a three-value vector if two nominal
 variables are passed (the second value is the tolerance value for
 the second variable and the third value is the tolerance value
-for the combinations of both variables). If unsure how to use
-this parameter, start using large tolerance values and observe
-the group assigments.}
+for the combinations of both variables). It is possible that no
+assignment will be found that fits the tolerance requirements; if
+unsure how to use this parameter, start using large tolerance
+values and observe the group assigments.}
 
 \item{equalize}{A list of functions. These functions determine which
 criterion is minimized between sets: differences in function
@@ -51,13 +57,15 @@ vector.}
 \item{write_file}{Boolean. Will newly found better fitting sets be
 written to a file automatically? (This is helpful if your
 simulation runs unexpectedly long and you need to kill it; in
-this case the best match is not lost)}
+this case the best match is not lost). Defaults to `FALSE`.}
+
+\item{talk}{Boolean. If `TRUE`, the function will print its progress.}
 }
 \value{
-A \code{data.frame}. Contains all columns from argument
-    `data` and additionally a column variable `$newSet`. This columns
-    contains the set assigment that produced the best fit in the
-    previous iterations.
+A \code{data.frame}. Contains all columns from argument `dat`
+    and additionally a column variable `$newSet`. This columns
+    contains the set assigment that produced the best fit to the
+    specified criteria.
 }
 \description{
 This function can be used to assign a set of items to N
