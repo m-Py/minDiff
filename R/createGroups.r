@@ -1,10 +1,8 @@
-#' Function that assigns elements to N sets and minimizes differences in
-#' sets.
+#' Create sets having minimal differences
 #'
-#' This function can be used to assign a set of items to N
-#' groups. Differences between groups are minimized in regard to
-#' specified criteria (E.g.: minimize differences in mean test scores
-#' between school classes).
+#' Is used to assign a set of items to N groups. Differences between
+#' groups are minimized with regard to specified criteria (E.g.:
+#' minimize differences in mean test scores between school classes).
 #'
 #' @param dat A data.frame containing the set that is to be
 #'     regrouped. All assignment criteria must be columns of this
@@ -22,8 +20,9 @@
 #' @param repetitions How many random assignments are to be tested. Only
 #'     use if `exact` == FALSE.
 #' @param exact Should _all_ possible assignments be tested? This yields
-#'     the optimal solution. Defaults to `FALSE`, in which case a random
-#'     subset of all possible assignments will be tested.
+#'     the "optimal" solution given the assignment ciriteria and
+#'     functions. Defaults to `FALSE`, in which case a random subset of
+#'     all possible assignments will be tested.
 #' @param tolerance_nominal Use only if argument `criteria_nominal` is
 #'     also passed. This argument indicates the tolerated frequency
 #'     deviations for nominal variables (and their combinations) between
@@ -49,17 +48,18 @@
 #' @param talk Boolean. If `TRUE`, the function will print its progress.
 #'
 #' @return A \code{data.frame}. Contains all columns from argument `dat`
-#'     and additionally a column variable `$newSet`. This columns
-#'     contains the set assigment that produced the best fit to the
-#'     specified criteria.
+#'     and additionally a column variable `newSet`. This columns
+#'     contains the set assigment of items to groups that produced the
+#'     best fit in the previous iterations.
 #' 
 #' @export
 #' 
 #' @author Martin Papenberg \email{martin.papenberg@@hhu.de}
 #'
 
-create_groups <- function(dat, criteria_scale=NULL, criteria_nominal=NULL,
-                          sets_n, repetitions=1, exact = FALSE,
+create_groups <- function(dat, criteria_scale=NULL,
+                          criteria_nominal=NULL, sets_n,
+                          repetitions=100, exact = FALSE,
                           tolerance_nominal=rep(Inf, 3),
                           equalize=list(mean), write_file = FALSE,
                           talk = TRUE) {

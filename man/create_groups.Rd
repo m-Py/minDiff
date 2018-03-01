@@ -2,11 +2,10 @@
 % Please edit documentation in R/createGroups.r
 \name{create_groups}
 \alias{create_groups}
-\title{Function that assigns elements to N sets and minimizes differences in
-sets.}
+\title{Create sets having minimal differences}
 \usage{
 create_groups(dat, criteria_scale = NULL, criteria_nominal = NULL, sets_n,
-  repetitions = 1, exact = FALSE, tolerance_nominal = rep(Inf, 3),
+  repetitions = 100, exact = FALSE, tolerance_nominal = rep(Inf, 3),
   equalize = list(mean), write_file = FALSE, talk = TRUE)
 }
 \arguments{
@@ -31,8 +30,9 @@ can be realized.}
 use if `exact` == FALSE.}
 
 \item{exact}{Should _all_ possible assignments be tested? This yields
-the optimal solution. Defaults to `FALSE`, in which case a random
-subset of all possible assignments will be tested.}
+the "optimal" solution given the assignment ciriteria and
+functions. Defaults to `FALSE`, in which case a random subset of
+all possible assignments will be tested.}
 
 \item{tolerance_nominal}{Use only if argument `criteria_nominal` is
 also passed. This argument indicates the tolerated frequency
@@ -63,15 +63,14 @@ this case the best match is not lost). Defaults to `FALSE`.}
 }
 \value{
 A \code{data.frame}. Contains all columns from argument `dat`
-    and additionally a column variable `$newSet`. This columns
-    contains the set assigment that produced the best fit to the
-    specified criteria.
+    and additionally a column variable `newSet`. This columns
+    contains the set assigment of items to groups that produced the
+    best fit in the previous iterations.
 }
 \description{
-This function can be used to assign a set of items to N
-groups. Differences between groups are minimized in regard to
-specified criteria (E.g.: minimize differences in mean test scores
-between school classes).
+Is used to assign a set of items to N groups. Differences between
+groups are minimized with regard to specified criteria (E.g.:
+minimize differences in mean test scores between school classes).
 }
 \author{
 Martin Papenberg \email{martin.papenberg@hhu.de}
