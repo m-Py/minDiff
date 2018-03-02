@@ -40,10 +40,8 @@ sample. Imagine you wish to assign students to three different
 dormitories and want to create a similar groups of students in each
 house. As a first step, we might want to match average student age.
 
-To do so, we pass our data set to the function `create_groups()`. We
-also specify that we want to create three groups whose ages should be
-equal on average (specified by passing the function `mean` to the
-argument `equalize`).
+To do so, we pass our data set to the function `create_groups` and
+specify which variable should be made equal in how many sets. 
 
 ```
 
