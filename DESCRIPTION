@@ -4,12 +4,14 @@ Title: Minimize differences between groups
 Author: Martin Papenberg <martin.papenberg@hhu.de>
 Maintainer: Martin Papenberg <martin.papenberg@hhu.de>
 Depends: R (>= 2.10.0)
-Description: Assign any sort of elements to different groups and minimize group differences
+Description: Assign any sort of elements to different groups and
+        minimize group differences
 License: GPL (>= 2)
 Encoding: UTF-8
 LazyLoad: yes
 URL: https://github.com/m-Py/minDiff
-Authors@R: c(person(given="Martin", family="Papenberg", email="martin.papenberg@hhu.de", role=c("aut", "cre")))
+Authors@R: c(person(given="Martin", family="Papenberg",
+        email="martin.papenberg@hhu.de", role=c("aut", "cre")))
 Version: 0.01-3
-Date: 2018-03-01
+Date: 2018-03-02
 RoxygenNote: 6.0.1

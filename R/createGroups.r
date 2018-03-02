@@ -66,10 +66,12 @@ create_groups <- function(dat, criteria_scale=NULL,
 
     ## How many items are to be reassigned:
     cases <- nrow(dat)
+    
     ## Check for errors and warnings
-    checkInput(dat, sets_n, criteria_scale, criteria_nominal, cases)
+    checkInput(dat, sets_n, criteria_scale, criteria_nominal,
+               tolerance_nominal, cases)
 
-    ## Initialize a variable that encodes the assignment to groups
+    ## Initialize a vector that encodes the assignment to groups
     setAssign  <- sort(rep_len(1:sets_n, cases))
     
     ## Check if a set was passed that was optizmized in a recent run
@@ -119,7 +121,10 @@ create_groups <- function(dat, criteria_scale=NULL,
         ## nominal criteria are satisfied
         if (!is.null(criteria_nominal)) {
             nominal_okay <- check_nominal(dat, criteria_nominal, tolerance_nominal, cases)
-            if (!nominal_okay) next
+            if (!nominal_okay) {
+                i <- i + 1
+                next
+            }                   
         }
         
         ## NOW CONTINUOUS VARIABLES ARE CHECKED: What is done: Minimize
@@ -165,10 +170,11 @@ write_file <- function(write, dat) {
 }
 
 ## Method that checks the user input and generates error or warning messsages
-checkInput <- function(dat, sets_n, criteria_scale, criteria_nominal, cases) {
+checkInput <- function(dat, sets_n, criteria_scale, criteria_nominal,
+                       tolerance_nominal, cases) {
     
     ## CHECK FOR ERRORS IN USER INPUT
-    errMsg <- "error in function reassign.set:"
+    errMsg <- "Error in function `create_groups`:"
    
     if (class(dat) != "data.frame") {
         stop(paste(errMsg, "first argument must be a data.frame"))
@@ -178,9 +184,9 @@ checkInput <- function(dat, sets_n, criteria_scale, criteria_nominal, cases) {
         stop(paste(errMsg, "only two nominal variables can be considered in set creation."))
     }
     
-    if (length(criteria_nominal) == 2 && length(tolerance_nominal) < 3) {
-        stop(paste(errMsg, "Three tolerance_nominal values must be passed if
-                          two nominal criteria are given."))
+    if (length(criteria_nominal) == 2 & length(tolerance_nominal) != 3) {
+        stop(paste(errMsg, "Three tolerance_nominal values must be passed",
+                   "if two nominal criteria are given."))
     }
     
     for (i in c(criteria_scale, criteria_nominal)) {

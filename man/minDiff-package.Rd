@@ -12,7 +12,7 @@ Minimize differences between groups.
 Package: \tab minDiff\cr
 Type: \tab Package\cr
 Version: \tab 0.01-3\cr
-Date: \tab 2018-03-01\cr
+Date: \tab 2018-03-02\cr
 Depends: \tab R (>= 2.10.0)\cr
 Encoding: \tab UTF-8\cr
 License: \tab GPL (>= 2)\cr
