@@ -22,14 +22,14 @@ To install the minDiff package, type in your R console
 
 Load the package via
 
-```S
+```
 library("minDiff")
 ```
 
 To reproduce the following example, install the "MASS" package that
 contains the data set that is used.
 
-```S
+```
 library("MASS")
 data(survey)       # load data set
 head(survey, n=10) # look at the data
@@ -45,24 +45,23 @@ also specify that we want to create three groups whose ages should be
 equal on average (specified by passing the function `mean` to the
 argument `equalize`).
 
-```S
+```
 
-equal <- create_groups(survey, criteria_scale=c("Age"), 
-                       sets_n = 3, repetitions=10, equalize=list(mean))
+equal <- create_groups(survey, criteria_scale = "Age", 
+                       sets_n = 3, repetitions = 100)
 
 ```
 
-By passing the column `survey$Age` to the argument `criteria_scale` we
-tell the function that age is a continuous variable that we want to
-compute the mean for in each of the newly created groups. The function
-returns a data.frame that is saved into the object `equal`. `equal` is a
-shuffled version of the original data set `survey`, which has one
-additional column: `newSet` - this is the group assignment variable that
-was created.
+By passing the column `Age` to the argument `criteria_scale` we inform
+`create_groups` that age is a continuous variable, for which we want to
+minimize the differences between groups. `create_groups` returns a
+`data.frame` that is saved into the object `equal`. `equal` is actually
+the same as the input data `survey`, but it has one additional column:
+`newSet` - this is the group assignment variable that was created.
 
 Let's have a look at this:
 
-```S
+```
 > table(equal$newSet)
  1  2  3 
 79 79 79 
@@ -70,64 +69,51 @@ Let's have a look at this:
 
 The `survey` data set has 237 entries, which can be assigned to three
 groups of equal size. If the data set had not been a multiplier of the
-group number, `create_groups()` would have created groups that are of
+group number, `create_groups` would have created groups that are of
 similar size.
 
 Let's see how successful we were in creating groups of age:
 
-```S
+```
 > tapply(equal$Age, equal$newSet, mean)
        1        2        3 
 20.35449 20.57806 20.19099 
 ```
 
 Not so bad! But how did it work? In the function call above, we
-specified another parameter, `repetitions=10`. This means that the
-function randomly assigned all cases (i.e. students) to three groups ten
-times, and returned the most equal group assignment. What is considered
-most equal is determined by the parameters `criteria_scale` and
-`equalize`.
-
-By varying the parameter `repetitions` we can increase our chances of
-creating equal groups. Let's see what happens if we do only one trial -
-in this case, the data set is simply shuffled once and no optimization
-is conducted:
-
-```S
-equal <- create_groups(survey, criteria_scale=c("Age"), 
-                       sets_n = 3, repetitions=1, equalize=list(mean))
-
-> tapply(equal$Age, equal$newSet, mean)
-       1        2        3 
-20.71423 19.54434 20.86497                
-```
-
-If we conduct 10,000 repetitions (which is still very fast if we only
+specified another parameter, `repetitions=100` (which is also the
+default value if we do not specify a value for repetition). This means
+that the function randomly assigned all cases (i.e. students) to three
+groups 100 times, and returned the most equal group assignment. In the
+default case, what is considered most equal is the assignment that has
+the minimum difference in group means; but we can specify different
+criteria if we want to (see below). By varying the parameter
+`repetitions` we can increase our chances of creating equal groups. If
+we conduct 10,000 repetitions (which is still very fast if we only
 consider one variable), the groups will be very similar with regards to
 age. Note that it is possible to pass a data set that has been optimized
 previously; in this case, the program does not start all over, but only
 tries find more similar groups than the previous best assignment:
 
-```S
-equal <- create_groups(equal, criteria_scale=c("Age"), 
-                       sets_n = 3, repetitions=10000, equalize=list(mean))
+```
+equal <- create_groups(equal, criteria_scale = "Age", 
+                       sets_n = 3, repetitions = 10000)
                      
 > tapply(equal$Age, equal$newSet, mean)
        1        2        3 
 20.37028 20.38194 20.37133
 ```
 
-Nice! How small differences between sets can become depends on the
-original data.
+Nice! How well your groups can match of course depends on the input data.
 
 ### Considering more than one criterion
 
-More than one criterion can be passed to the function. Let's imagine I
+We can pass more than one criterion to `create_groups`. Let's imagine we
 also want students to be of equal heights in all dormitories:
 
-```S
-equal <- create_groups(survey, criteria_scale=c("Age", "Height"), 
-                       sets_n = 3, repetitions=1000, equalize=list(mean))
+```
+equal <- create_groups(survey, criteria_scale = c("Age", "Height"), 
+                       sets_n = 3, repetitions = 10000)
                       
 > tapply(equal$Age, equal$newSet, mean)
        1        2        3 
@@ -139,9 +125,9 @@ equal <- create_groups(survey, criteria_scale=c("Age", "Height"),
 ```
 
 Note that there were missing values in the variable
-`survey$Height`. This is given out as a warning by `create_groups()`,
-but it will still return a result (and simply disregards the missing
-value in the variable height).
+`survey$Height`. This is given out as a warning by `create_groups`, but
+it will still return a result (and simply disregards the missing value
+in the variable height).
 
 ### Considering categorical criteria
 
@@ -150,7 +136,7 @@ height, but we might want to create equal gender ratios in all
 dormitories. Let's check in what ratios our previous group assignment
 resulted:
 
-```S
+```
 > table(equal$newSet, equal$Sex)
 
     Female Male
@@ -161,23 +147,23 @@ resulted:
 ```
 
 We can see that gender ratios are very different between
-dormitories. `create_groups()` offers the possibility to consider
+dormitories. `create_groups` offers the possibility to consider
 categorical variables when creating groups. These are passed via the
 `criteria_nominal` parameter. Let's try this out:
 
-```S
+```
 
-equal <- create_groups(survey, criteria_scale=c("Age"), 
-                       criteria_nominal=c("Sex"), tolerance_nominal=c(2),
-                       sets_n = 3, repetitions=100, equalize=list(mean))
+equal <- create_groups(survey, criteria_scale = "Age", 
+                       criteria_nominal = "Sex", tolerance_nominal = 2,
+                       sets_n = 3, repetitions = 100)
 
 ```
 
-By specifying the parameter `tolerance_nominal = 2`, we tell the
-function that we tolerate deviations in the frequency between new sets
-of no more than 2. Did that work?
+By specifying the parameter `tolerance_nominal = 2`, we tell
+`create_groups` that we tolerate deviations between dormitories in the
+frequency of female and male students of no more than 2. Did that work?
 
-```S
+```
 > table(equal$newSet, equal$Sex)
 
     Female Male
@@ -188,25 +174,24 @@ of no more than 2. Did that work?
 
 Note that in this case, we could decrease our tolerance for deviations
 to 1, but it is impossible to assign the same number of female and male
-students to all dormitories in this case. If a tolerance of 0 is passed,
-the function will never stop executing, so be careful with low tolerance
-values if you are not sure how categories can be assigned to groups.
+students to all dormitories in this case. If a tolerance value is passed
+that cannot be met using the present data and the number of repetitions
+that were conducted, `create_groups` will not return an assignment.
 
 ### Use more than one categorical variable
 
 It is possible to pass two categorical criteria `create_groups()`. There
 is no limit for scale criteria, but only two categorical variables can
-be passed (that is because two variables can already make the program
-run really slow).
+be passed.
 
-Here is an example where I use two categorical and two scale variables:
+Here is an example where we want to create dormitories that are similar
+with regard to smoker status and gender ratio:
 
-```S
-
-equal <- create_groups(survey, criteria_scale=c("Age", "Height"),
-                       criteria_nominal=c("Sex", "Smoke"),
-                       tolerance_nominal=c(2, 3, Inf), sets_n = 3,
-                       repetitions=20, equalize=list(mean))
+```
+equal <- create_groups(survey, criteria_scale = c("Age", "Height"),
+                       criteria_nominal = c("Sex", "Smoke"),
+                       tolerance_nominal = c(2, 3, Inf), sets_n = 3,
+                       repetitions=100)
 
 > table(equal$newSet, equal$Sex)
 
@@ -227,7 +212,7 @@ Note that the parameter `tolerance_nominal` expects a vector of length 3
 if two categorical variables are passed to `criteria_nominal`. These
 values indicate tolerances for deviations in the first, the second and
 the combined categorical levels. In doubt, use large tolerance values
-when starting to optimize your groups and see how fast the function is
+when starting to optimize your groups and see how well the function is
 running. In the upper case I was not interested to assign an equal
 number of smoking females and males to each dormitories and considered
 both categorical variables independently from each other. So, I set the
@@ -240,11 +225,12 @@ but also the standard deviation of ages to achieve similar distributions
 of age between dormitories. This is possible by passing another function
 to the `equalize` parameter.
 
-```S
-equal <- create_groups(survey, criteria_scale=c("Age"), 
-                      criteria_nominal=c("Smoke"), 
-                      tolerance_nominal=c(2),
-                      sets_n = 3, repetitions=500, equalize=list(mean, sd))
+```
+equal <- create_groups(survey, criteria_scale = "Age", 
+                      criteria_nominal = "Smoke", 
+                      tolerance_nominal = 2,
+                      sets_n = 3, repetitions = 500, 
+                      equalize = list(mean, sd))
 
 > tapply(equal$Age, equal$newSet, mean)
        1        2        3 
@@ -253,18 +239,42 @@ equal <- create_groups(survey, criteria_scale=c("Age"),
 > tapply(equal$Age, equal$newSet, sd)
        1        2        3 
 6.599697 6.995727 5.855852 
-````
+```
 
-### Performance
+## "Exact" solution
 
-Simple group assignments are fast and effective. The most simple case is
-to have only one criterion and two groups - the groups will probably
-become very similar very fast. If more groups are required, more
-criteria are specified and more equalizing functions are considered, the
-function will run slower and results may be less optimal. I suggest to
-try out different settings, and start with simpler requirements. Note
-that using categorical variables will make the function very slow if the
-tolerance level is low.
+So far, we tried to minimize differences between groups using repeated
+random assignments of students to groups. `create_groups` also offers
+the possibility to compute the exact best assignment (with regard to the
+specified criteria). You can compute the best assignment by setting the
+parameter `exact` to `TRUE` (it defaults to `FALSE`). In this case, all
+possible assignments will be tested sequentially. As the number of
+assignments growths exponentially with the number of items to be
+assigned, this option is not feasible for large data sets. 
+
+This code produces the best assignment of the first 20 students to two
+groups. A total of 184,756 assignments is conducted (fun fact: the
+number of all possible assignments of students to three groups is 4.16 *
+10^110).
+
+```
+
+surv <- head(survey, n = 20)
+
+equal <- create_groups(surv, criteria_scale = "Age", exact = TRUE,
+                       sets_n = 2)
+
+> tapply(equal$Age, equal$newSet, mean)
+      1       2 
+20.3248 20.3168 
+
+```
+
+This ran 48 in seconds on my computer.
+
+## How is the similarity between groups measured
+
+To be written.
 
 ## Feedback / Bug reports
 
