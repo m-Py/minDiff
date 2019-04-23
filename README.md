@@ -5,6 +5,12 @@ specified number of groups and minimize differences between created
 groups. This functionality is implemented in the method
 `create_groups()`.
 
+**Note that this package is no longer maintained, but there is a 
+successor package that is under active developement: 
+[`anticlust`](https://github.com/m-Py/anticlust).** The
+`anticlust` package builds on the theory of cluster analysis to 
+create sets of elements that are as similar as possible. 
+
 I created this package to assign stimuli in psychological experiments to
 different conditions so that conditions are as equal as possible, a
 priori. But I am sure that a wide range of applications is possible (for
