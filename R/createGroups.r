@@ -176,7 +176,7 @@ checkInput <- function(dat, sets_n, criteria_scale, criteria_nominal,
     ## CHECK FOR ERRORS IN USER INPUT
     errMsg <- "Error in function `create_groups`:"
    
-    if (class(dat) != "data.frame") {
+    if (all(class(dat) != "data.frame")) {
         stop(paste(errMsg, "first argument must be a data.frame"))
     }
     
